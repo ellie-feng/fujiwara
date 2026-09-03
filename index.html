@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>25:00 · FOCUS — Fujiwara</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body data-phase="focus">
+  <canvas id="stage" width="320" height="180" aria-label="Pixel-art driving scene"></canvas>
+
+  <div class="wordmark">FUJIWARA<small>NIGHT RUN</small></div>
+
+  <section class="dash" role="group" aria-label="Timer">
+    <span class="vdo">FJW</span>
+
+    <!-- centre: time + progress bar -->
+    <div class="readout">
+      <span id="clock" class="clock">25:00</span>
+      <span id="phase" class="phase">FOCUS</span>
+      <div class="gauge">
+        <span class="cap">E</span>
+        <div id="progress" class="progress" role="progressbar" aria-label="Fuel gauge" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100"></div>
+        <span class="cap">F</span>
+        <span id="fuel-pct" class="pct">100%</span>
+      </div>
+    </div>
+
+    <!-- transport: skip / play / reset  (pixel-art icons injected by app.js) -->
+    <div class="controls">
+      <button id="btn-skip" class="tbtn" type="button" aria-label="Skip to next phase"></button>
+      <button id="btn-playpause" class="tbtn primary" type="button" aria-label="Start or pause" aria-pressed="false"></button>
+      <button id="btn-reset" class="tbtn" type="button" aria-label="Reset"></button>
+    </div>
+
+    <!-- four LCD boxes -->
+    <div class="boxes">
+      <div class="box">
+        <span class="k">TOTAL</span>
+        <span class="v"><span id="total-min">0</span><span class="u">MIN</span></span>
+      </div>
+
+      <div class="box stepper">
+        <span class="k">STUDY</span>
+        <span class="row">
+          <button class="adj" data-adj="focus" data-dir="-1" type="button" aria-label="Less study time">▼</button>
+          <span class="v"><span id="focus-val">25</span><span class="u">m</span></span>
+          <button class="adj" data-adj="focus" data-dir="1" type="button" aria-label="More study time">▲</button>
+        </span>
+      </div>
+
+      <div class="box stepper">
+        <span class="k">BREAK</span>
+        <span class="row">
+          <button class="adj" data-adj="break" data-dir="-1" type="button" aria-label="Less break time">▼</button>
+          <span class="v"><span id="break-val">5</span><span class="u">m</span></span>
+          <button class="adj" data-adj="break" data-dir="1" type="button" aria-label="More break time">▲</button>
+        </span>
+      </div>
+
+      <button id="btn-scene" class="box scene" type="button" aria-label="Toggle day or night">
+        <span class="k">SCENE</span>
+        <span class="v"><span id="scene-icon" aria-hidden="true">☾</span><span id="scene-val">NIGHT</span></span>
+      </button>
+    </div>
+  </section>
+
+  <p class="hint">SPACE play/pause · S skip · R reset</p>
+
+  <script src="js/palette.js"></script>
+  <script src="js/timer.js"></script>
+  <script src="js/car.js"></script>
+  <script src="js/scene.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
