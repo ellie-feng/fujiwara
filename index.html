@@ -47,7 +47,7 @@
         <span class="k">STUDY</span>
         <span class="row">
           <button class="adj" data-adj="focus" data-dir="-1" type="button" aria-label="Less study time">▼</button>
-          <span class="v"><span id="focus-val">25</span><span class="u">m</span></span>
+          <span class="v"><input id="focus-val" class="num" type="number" min="1" max="180" step="1" value="25" inputmode="numeric" aria-label="Study minutes" /><span class="u">m</span></span>
           <button class="adj" data-adj="focus" data-dir="1" type="button" aria-label="More study time">▲</button>
         </span>
       </div>
@@ -56,7 +56,7 @@
         <span class="k">BREAK</span>
         <span class="row">
           <button class="adj" data-adj="break" data-dir="-1" type="button" aria-label="Less break time">▼</button>
-          <span class="v"><span id="break-val">5</span><span class="u">m</span></span>
+          <span class="v"><input id="break-val" class="num" type="number" min="1" max="60" step="1" value="5" inputmode="numeric" aria-label="Break minutes" /><span class="u">m</span></span>
           <button class="adj" data-adj="break" data-dir="1" type="button" aria-label="More break time">▲</button>
         </span>
       </div>

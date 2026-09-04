@@ -16,8 +16,8 @@
   'use strict';
 
   var BASE_W = 320, H = 180;
-  var HORIZON = 76;
-  var GROUND_Y = 104;
+  var HORIZON = 68;      // road top edge, higher up so the dash sits over clear road
+  var GROUND_Y = 88;     // car wheel contact line (upper-middle of the frame)
   var DRIVE_SPEED = 1.5;      // slower cruise (was 2.6)
   var CAR_X_DRIVE = 118;
   var CAR_X_PARK = 150;
@@ -25,25 +25,31 @@
 
   var THEMES = {
     night: {
-      skyTop: PAL.c1, skyLow: PAL.c2,
-      ridgeFar: PAL.c1, ridgeNear: PAL.c0, pine: '#0b0c15',
-      road: '#0b0c15', shoulder: PAL.c3, edgeFar: PAL.c5, edgeNear: PAL.c4,
+      sky: ['#171a2c', '#1e2138', '#282e4c', '#38406a'], // top -> horizon, crisp bands
+      ridgeFar:  '#1b1e30', ridgeMid: '#151724', ridgeNear: '#0e0f18',
+      ridgeShadeFar: '#262c48', ridgeShadeMid: '#1e2238', ridgeShadeNear: '#161a2c',
+      ridgeRim: '#3a4066',
+      pine: '#0b0c15',
+      road: '#0b0c15', roadNear: '#101322', shoulder: PAL.c3, edgeFar: PAL.c5, edgeNear: PAL.c4,
       dash: PAL.c5, rail: PAL.c4, post: PAL.c3,
       lampPole: PAL.c3, lampHead: PAL.c8, lampGlow: true,
       stars: true,
-      orbFill: PAL.c6, orbShade: PAL.c5, orbGlow: 'rgba(236,230,211,0.32)', orbR: 10, glowR: 30,
-      vignette: 0.5, scrim: 'rgba(10,11,21,0.72)',
+      orbFill: PAL.c6, orbShade: PAL.c5, orbHalo: '#ece6d3', orbHaloA: 0.16, orbR: 10,
+      vignette: 0.34,
       night: true
     },
     day: {
-      skyTop: '#6ea3cf', skyLow: '#c2dae0',
-      ridgeFar: '#9fb8bd', ridgeNear: '#6d8f75', pine: '#3b5743',
-      road: '#3e4350', shoulder: '#585d6b', edgeFar: '#e9e5cb', edgeNear: '#d7d3b8',
+      sky: ['#5f9bcb', '#79add4', '#9fc7dc', '#c9dee2'],
+      ridgeFar:  '#a7bec2', ridgeMid: '#8dab99', ridgeNear: '#6d8f75',
+      ridgeShadeFar: '#c0d4d5', ridgeShadeMid: '#a6c1af', ridgeShadeNear: '#88a98e',
+      ridgeRim: '#dcebe1',
+      pine: '#3b5743',
+      road: '#3e4350', roadNear: '#474d5d', shoulder: '#585d6b', edgeFar: '#e9e5cb', edgeNear: '#d7d3b8',
       dash: '#e9e5cb', rail: '#aeb4c0', post: '#7c8290',
       lampPole: '#8a8f9c', lampHead: '#6f7480', lampGlow: false,
       stars: false,
-      orbFill: '#ffe7ad', orbShade: '#ffd98a', orbGlow: 'rgba(255,231,173,0.55)', orbR: 12, glowR: 46,
-      vignette: 0.22, scrim: 'rgba(20,24,32,0.6)',
+      orbFill: '#ffe7ad', orbShade: '#ffd98a', orbHalo: '#ffe7ad', orbHaloA: 0.22, orbR: 12,
+      vignette: 0.12,
       night: false
     }
   };
@@ -77,14 +83,16 @@
 
   Scene.prototype._build = function () {
     var rnd = mulberry32(20260903);
-    var span = Math.max(2 * this.W, 900);
+    var span = Math.max(2 * this.W, 1000);
     this.stars = [];
-    var n = Math.round(this.W / 4.5);
+    var n = Math.round(this.W / 4);
     for (var i = 0; i < n; i++) {
       this.stars.push({ x: rnd() * this.W, y: rnd() * (HORIZON - 14), s: rnd() < 0.14 ? 2 : 1, p: rnd() * Math.PI * 2 });
     }
-    this.ridgeFar = this._ridge(rnd, span, 16, 30);
-    this.ridgeNear = this._ridge(rnd, span, 24, 44);
+    // three ridge lines, near ones taller / jaggier
+    this.ridgeFar  = this._ridge(rnd, span, 11, 22, 10);
+    this.ridgeMid  = this._ridge(rnd, span, 18, 34, 7);
+    this.ridgeNear = this._ridge(rnd, span, 26, 46, 5);
   };
 
   Scene.prototype.resize = function (w) {
@@ -94,12 +102,27 @@
     this._build();
   };
 
-  Scene.prototype._ridge = function (rnd, span, minH, maxH) {
-    var pts = [], x = 0;
-    while (x <= span) { pts.push([x, HORIZON - (minH + rnd() * (maxH - minH))]); x += 16 + rnd() * 28; }
-    pts.push([span, HORIZON - minH]);
+  // A jagged ridge as a random walk in height — connected, natural, and
+  // detailed enough to read as pixel mountains when rasterised per column.
+  Scene.prototype._ridge = function (rnd, span, minH, maxH, step) {
+    var pts = [], x = 0, h = minH + rnd() * (maxH - minH);
+    while (x <= span) {
+      h += (rnd() - 0.5) * (maxH - minH) * 0.4;
+      if (h < minH) h = minH + (minH - h) * 0.3;
+      if (h > maxH) h = maxH - (h - maxH) * 0.3;
+      pts.push([x, HORIZON - h]);
+      x += step * (0.8 + rnd() * 1.1);
+    }
+    pts.push([span, pts[pts.length - 1][1]]);
     return pts;
   };
+
+  function ridgeYAt(pts, sx) {
+    var lo = 0, hi = pts.length - 1;
+    while (lo + 1 < hi) { var m = (lo + hi) >> 1; if (pts[m][0] <= sx) lo = m; else hi = m; }
+    var a = pts[lo], b = pts[hi], w = b[0] - a[0];
+    return a[1] + (b[1] - a[1]) * (w > 0 ? (sx - a[0]) / w : 0);
+  }
 
   // ---- state machine ----
   Scene.prototype.setPhase = function (phase) {
@@ -164,10 +187,12 @@
     var T = this.T, t = this._t, W = this.W;
     ctx.clearRect(0, 0, W, H);
 
-    ctx.fillStyle = T.skyTop;
-    ctx.fillRect(0, 0, W, HORIZON - 16);
-    ctx.fillStyle = T.skyLow;
-    ctx.fillRect(0, HORIZON - 16, W, 16);
+    // sky — crisp horizontal bands (not a smooth gradient)
+    var bh = HORIZON / T.sky.length;
+    for (var b = 0; b < T.sky.length; b++) {
+      ctx.fillStyle = T.sky[b];
+      ctx.fillRect(0, Math.round(b * bh), W, Math.ceil(bh) + 1);
+    }
 
     if (T.stars) {
       for (var i = 0; i < this.stars.length; i++) {
@@ -179,16 +204,12 @@
       ctx.globalAlpha = 1;
     }
 
-    // sun / moon — kept clear of the right edge
+    // sun / moon — one dim halo disc (no big soft gradient), then the orb
     var ox = W - 62;
-    ctx.save();
-    ctx.globalCompositeOperation = 'lighter';
-    var og = ctx.createRadialGradient(ox, 28, 0, ox, 28, T.glowR);
-    og.addColorStop(0, T.orbGlow);
-    og.addColorStop(1, T.orbGlow.replace(/[\d.]+\)$/, '0)'));
-    ctx.fillStyle = og;
-    ctx.beginPath(); ctx.arc(ox, 28, T.glowR, 0, Math.PI * 2); ctx.fill();
-    ctx.restore();
+    ctx.globalAlpha = T.orbHaloA;
+    ctx.fillStyle = T.orbHalo;
+    ctx.beginPath(); ctx.arc(ox, 28, T.orbR + (T.night ? 5 : 9), 0, Math.PI * 2); ctx.fill();
+    ctx.globalAlpha = 1;
     ctx.fillStyle = T.orbFill;
     ctx.beginPath(); ctx.arc(ox, 28, T.orbR, 0, Math.PI * 2); ctx.fill();
     if (T.night) {
@@ -197,21 +218,30 @@
       ctx.beginPath(); ctx.arc(ox + 3, 31, 1.6, 0, Math.PI * 2); ctx.fill();
     }
 
-    this._drawRidge(ctx, this.ridgeFar, this.distance * 0.12, T.ridgeFar);
-    this._drawRidge(ctx, this.ridgeNear, this.distance * 0.28, T.ridgeNear);
+    // ridgelines — rasterised per column so the edges stay crisp when upscaled
+    this._drawRidge(ctx, this.ridgeFar,  this.distance * 0.10, T.ridgeFar,  T.ridgeShadeFar,  null);
+    this._drawRidge(ctx, this.ridgeMid,  this.distance * 0.20, T.ridgeMid,  T.ridgeShadeMid,  T.night ? T.ridgeRim : null);
+    this._drawRidge(ctx, this.ridgeNear, this.distance * 0.34, T.ridgeNear, T.ridgeShadeNear, T.ridgeRim);
     ctx.fillStyle = T.pine;
-    repeat(W, this.distance * 0.28, 36, function (x) {
-      Scene._pine(ctx, x + 7, HORIZON - 5, 7, 15);
-      Scene._pine(ctx, x + 22, HORIZON - 3, 5, 11);
+    repeat(W, this.distance * 0.34, 34, function (x) {
+      Scene._pine(ctx, x + 7, HORIZON - 4, 6, 14);
+      Scene._pine(ctx, x + 21, HORIZON - 2, 5, 10);
     });
 
+    // road surface — two tones so it reads as receding tarmac, not a flat panel
     ctx.fillStyle = T.road;
     ctx.fillRect(0, HORIZON, W, H - HORIZON);
+    ctx.fillStyle = T.roadNear;
+    ctx.fillRect(0, HORIZON + 24, W, H - HORIZON - 24);
     ctx.fillStyle = T.shoulder; ctx.fillRect(0, HORIZON, W, 2);
     ctx.fillStyle = T.edgeFar; ctx.fillRect(0, HORIZON + 3, W, 1);
-    ctx.fillStyle = T.edgeNear; ctx.fillRect(0, H - 5, W, 2);
+    ctx.fillStyle = T.edgeNear; ctx.fillRect(0, H - 4, W, 2);
+    // centre line — small far dashes, plus faint big near dashes (scroll faster)
     ctx.fillStyle = T.dash;
-    repeat(W, this.distance, 26, function (x) { ctx.fillRect(x, HORIZON + 20, 12, 3); });
+    repeat(W, this.distance, 24, function (x) { ctx.fillRect(x, HORIZON + 15, 9, 2); });
+    ctx.globalAlpha = 0.4;
+    repeat(W, this.distance * 2.6, 68, function (x) { ctx.fillRect(x, H - 30, 22, 4); });
+    ctx.globalAlpha = 1;
 
     ctx.fillStyle = T.rail; ctx.fillRect(0, HORIZON - 7, W, 2);
     repeat(W, this.distance, 22, function (x) { ctx.fillStyle = T.post; ctx.fillRect(x, HORIZON - 7, 2, 7); });
@@ -233,14 +263,14 @@
       ctx.globalCompositeOperation = 'lighter';
       repeat(W, this.distance, 96, function (x) {
         var lx = x + 24, ly = HORIZON - 34;
-        var g = ctx.createRadialGradient(lx, ly, 0, lx, ly, 12);
-        g.addColorStop(0, 'rgba(226,164,90,0.30)'); g.addColorStop(1, 'rgba(226,164,90,0)');
+        var g = ctx.createRadialGradient(lx, ly, 0, lx, ly, 8);
+        g.addColorStop(0, 'rgba(226,164,90,0.26)'); g.addColorStop(1, 'rgba(226,164,90,0)');
         ctx.fillStyle = g;
-        ctx.beginPath(); ctx.arc(lx, ly, 12, 0, Math.PI * 2); ctx.fill();
-        var p = ctx.createRadialGradient(lx, HORIZON + 10, 0, lx, HORIZON + 10, 24);
-        p.addColorStop(0, 'rgba(226,164,90,0.10)'); p.addColorStop(1, 'rgba(226,164,90,0)');
+        ctx.beginPath(); ctx.arc(lx, ly, 8, 0, Math.PI * 2); ctx.fill();
+        var p = ctx.createRadialGradient(lx, HORIZON + 9, 0, lx, HORIZON + 9, 16);
+        p.addColorStop(0, 'rgba(226,164,90,0.09)'); p.addColorStop(1, 'rgba(226,164,90,0)');
         ctx.fillStyle = p;
-        ctx.beginPath(); ctx.ellipse(lx, HORIZON + 10, 24, 7, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.ellipse(lx, HORIZON + 9, 16, 5, 0, 0, Math.PI * 2); ctx.fill();
       });
       ctx.restore();
     }
@@ -253,39 +283,44 @@
       brake: this.state === 'arriving'
     });
 
-    var vg = ctx.createRadialGradient(W / 2, H / 2, 70, W / 2, H / 2, Math.max(190, W * 0.7));
+    // gentle vignette — only the corners, so it never washes the mountains
+    var vg = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.5, W / 2, H / 2, Math.max(W, H) * 0.78);
     vg.addColorStop(0, 'rgba(0,0,0,0)');
     vg.addColorStop(1, 'rgba(0,0,0,' + T.vignette + ')');
     ctx.fillStyle = vg;
     ctx.fillRect(0, 0, W, H);
-
-    var sc = ctx.createLinearGradient(0, H - 90, 0, H);
-    sc.addColorStop(0, T.scrim.replace(/[\d.]+\)$/, '0)'));
-    sc.addColorStop(1, T.scrim);
-    ctx.fillStyle = sc;
-    ctx.fillRect(0, H - 90, W, 90);
   };
 
-  Scene.prototype._drawRidge = function (ctx, pts, offset, color) {
-    var span = pts[pts.length - 1][0];
-    var ox = -((offset % span + span) % span);
-    ctx.fillStyle = color;
-    for (var pass = 0; pass < 3; pass++) {
-      var base = ox + pass * span;
-      if (base > this.W) break;
-      ctx.beginPath();
-      ctx.moveTo(base + pts[0][0], HORIZON);
-      for (var i = 0; i < pts.length; i++) ctx.lineTo(base + pts[i][0], pts[i][1]);
-      ctx.lineTo(base + span, HORIZON);
-      ctx.closePath();
-      ctx.fill();
+  // Rasterise the ridge one screen-column at a time: crisp vertical edges,
+  // a lighter upper band for form, and an optional 1px rim on the skyline.
+  Scene.prototype._drawRidge = function (ctx, pts, offset, color, shade, rim) {
+    var W = this.W, span = pts[pts.length - 1][0];
+    var off = ((offset % span) + span) % span;
+    for (var x = 0; x < W; x++) {
+      var y = Math.round(ridgeYAt(pts, (x + off) % span));
+      var h = HORIZON - y;
+      if (h <= 0) continue;
+      ctx.fillStyle = color;
+      ctx.fillRect(x, y, 1, h);
+      if (shade && h > 3) {
+        ctx.fillStyle = shade;
+        ctx.fillRect(x, y, 1, Math.max(1, (h * 0.38) | 0));
+      }
+      if (rim) {
+        ctx.fillStyle = rim;
+        ctx.fillRect(x, y, 1, 1);
+      }
     }
   };
 
   Scene._pine = function (ctx, x, baseY, w, h) {
-    ctx.beginPath();
-    ctx.moveTo(x, baseY - h); ctx.lineTo(x - w, baseY); ctx.lineTo(x + w, baseY);
-    ctx.closePath(); ctx.fill();
+    var steps = 5;
+    for (var r = 0; r < steps; r++) {
+      var ww = Math.max(1, Math.round((r + 1) / steps * w));
+      var yy = baseY - Math.round((steps - r) / steps * h);
+      ctx.fillRect(x - ww, yy, ww * 2, Math.ceil(h / steps) + 1);
+    }
+    ctx.fillRect(x - 1, baseY - 1, 2, 3); // trunk
   };
 
   Scene._lamp = function (ctx, x, roadTop, T) {
