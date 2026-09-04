@@ -313,5 +313,14 @@
   scene.render(ctx);
   requestAnimationFrame(frame);
 
+  // ?autostart (also ?play / ?demo) — begin the countdown on load, so an
+  // embed shows a live session without the viewer touching anything.
+  var qs = new URLSearchParams(location.search);
+  if (qs.has('autostart') || qs.has('play') || qs.has('demo')) {
+    timer.start();
+    scene.setRunning(true);
+    renderHUD(timer.getState());
+  }
+
   window.Fujiwara = { timer: timer, scene: scene };
 })();
