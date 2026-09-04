@@ -1,55 +1,60 @@
 # Fujiwara
 
+**▶ Live: <https://ellie-feng.github.io/fujiwara/>**  (hosted on GitHub Pages)
+
 A pixel-art **pomodoro timer** with a night-run theme. Full-screen: you're
 looking out the windscreen of a red **ND Mazda MX-5** as it drives side-on over
-a scrolling parallax touge backdrop, with a **VDO-style digital dash** across the
-bottom. When a break starts the car eases off the road and pulls into a **gas
-station** or a **drive-through** (the two alternate); when the break ends it
-pulls back out and the run resumes.
+a scrolling parallax touge backdrop, with a **digital dash** across the bottom.
+When a break starts the car eases off the road and pulls into a **gas station**
+or a **drive-through** (the two alternate); when the break ends it pulls back
+out and the run resumes.
 
-The dash is a green-LCD cluster:
+The dash cluster:
 
 - **big readout** = time remaining (MM:SS)
-- **progress bar** = session progress, redline near the end
+- **fuel gauge** = drains over a focus block, refills on the break
 - **box 1** = lifetime study minutes (persisted in `localStorage`)
 - **box 2 / 3** = study / break length steppers (▲ ▼)
 - **box 4** = day / night scene toggle
 
 The car is the supplied pixel-art image (`assets/ndmiata.jpg`); its flat grey
-background is colour-keyed out and cropped at load. Limited retro palette
-(`js/palette.js`) — a cool ramp with two warm accents — is shared by the
-scene and the HUD, with a separate daytime theme in `js/scene.js`.
+background is colour-keyed out and cropped at load. The scene uses a limited
+retro palette (`js/palette.js`) with a separate daytime theme in `js/scene.js`;
+the dash has its own pastel set in `styles.css`.
 
 The scene's internal buffer is a fixed 180px tall and flexes its width to the
 window aspect, so it fills the viewport without a heavy crop.
 
-No build step, no dependencies. Open `index.html`.
+## Running locally
+
+No build step, no dependencies — serve the folder:
 
 ```bash
 python3 -m http.server 8000
-# then visit http://localhost:8000
+# → http://localhost:8000
 ```
+
+Append `?autostart=1` (also `?play` / `?demo`) to the URL to begin a session on
+load without interaction — this is what the portfolio embed uses.
 
 ## Controls
 
-| Action        | Button        | Key     |
-| ------------- | ------------- | ------- |
-| Start / pause | ▶ START / ❚❚  | `Space` |
-| Skip phase    | SKIP ▶▶        | `S`     |
-| Reset         | RESET         | `R`     |
+| Action       | Button        | Key     |
+| ------------ | ------------- | ------- |
+| Play / pause | centre button | `Space` |
+| Skip phase   | left button   | `S`     |
+| Reset        | right button  | `R`     |
 
-Focus / break lengths are configurable in the panel (default **25 / 5** min).
-Every 4th focus block is followed by a longer break.
-
-The HUD shows the countdown in a pixel font, a **fuel gauge** that drains over a
-focus block and refuels on a break, a **trip meter** (8.6 km per completed run —
-the length of Akina's downhill), and a dot per completed pomodoro.
+Study / break lengths are set with the ▼ ▲ steppers (default **25 / 5** min);
+every 4th focus block gets a longer break. The dash also shows a **fuel gauge**
+that drains over a focus block and refills on a break, a lifetime **study-minutes
+total**, and a **day / night** toggle.
 
 ## Project layout
 
 ```
 index.html         markup + digital dash
-styles.css         full-bleed canvas + green-LCD cluster styling
+styles.css         full-bleed canvas + pastel dash styling
 js/palette.js       the shared limited colour ramp
 js/timer.js         PomodoroTimer — pure state machine, no DOM, no timers of its own
 js/car.js           loads assets/ndmiata.jpg, keys out the bg, blits it + night lights
@@ -81,4 +86,4 @@ or open `tests.html` in a browser.
 ## Scope
 
 v1 is the visual + timer core only. Not included yet: todo list, Spotify widget,
-livery customization, day/weather variants.
+livery customization, weather variants.
