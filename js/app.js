@@ -25,7 +25,10 @@
   // Match the internal buffer to the viewport aspect (fixed 180px tall) so the
   // scene fills the window without a heavy horizontal crop.
   function fitCanvas() {
-    var w = Math.max(248, Math.min(640, Math.round(Scene.H * window.innerWidth / window.innerHeight)));
+    var vw = window.innerWidth || 320, vh = window.innerHeight || 180;
+    var w = Math.round(Scene.H * vw / vh);
+    if (!isFinite(w) || w < 248) w = 248;
+    if (w > 640) w = 640;
     if (canvas.width !== w) canvas.width = w;
     if (canvas.height !== Scene.H) canvas.height = Scene.H;
     ctx.imageSmoothingEnabled = false; // resizing the canvas resets ctx state
@@ -160,6 +163,7 @@
   var timer = new PomodoroTimer({
     focusMs: focusMin * 60000,
     breakMs: breakMin * 60000,
+    autoStartNext: true, // focus -> break -> focus rolls on without a click
     onPhase: function (state) {
       scene.setPhase(state.phase);
       document.body.dataset.phase = state.phase === 'focus' ? 'focus' : 'break';
@@ -208,11 +212,26 @@
 
     elPlayPause.classList.toggle('running', state.running);
     elPlayPause.setAttribute('aria-pressed', String(state.running));
+
+    setConfigLocked(state.running);
   }
 
   function renderConfig() {
-    elFocusVal.textContent = focusMin;
-    elBreakVal.textContent = breakMin;
+    if (document.activeElement !== elFocusVal) elFocusVal.value = focusMin;
+    if (document.activeElement !== elBreakVal) elBreakVal.value = breakMin;
+  }
+
+  // Study / break lengths can't be changed mid-session — grey them out while
+  // the timer is running; edits resume when it's paused.
+  var configLocked = null;
+  var steppers = document.querySelectorAll('.box.stepper');
+  function setConfigLocked(locked) {
+    if (locked === configLocked) return;
+    configLocked = locked;
+    elFocusVal.disabled = locked;
+    elBreakVal.disabled = locked;
+    document.querySelectorAll('.adj').forEach(function (b) { b.disabled = locked; });
+    steppers.forEach(function (b) { b.classList.toggle('locked', locked); });
   }
 
   function applySceneChrome() {
@@ -257,23 +276,38 @@
     renderHUD(timer.getState());
   });
 
+  function setFocusMin(v) {
+    focusMin = clampInt(v, 1, 180, focusMin);
+    LS.set('focusMin', focusMin);
+    timer.configure({ focusMs: focusMin * 60000 });
+    renderConfig();
+    renderHUD(timer.getState());
+  }
+  function setBreakMin(v) {
+    breakMin = clampInt(v, 1, 60, breakMin);
+    LS.set('breakMin', breakMin);
+    timer.configure({ breakMs: breakMin * 60000 });
+    renderConfig();
+    renderHUD(timer.getState());
+  }
+
+  // steppers
   document.querySelectorAll('.adj').forEach(function (btn) {
     btn.addEventListener('click', function () {
-      var which = btn.dataset.adj;
       var dir = parseInt(btn.dataset.dir, 10);
-      if (which === 'focus') {
-        focusMin = clampInt(focusMin + dir, 1, 180, 25);
-        LS.set('focusMin', focusMin);
-        timer.configure({ focusMs: focusMin * 60000 });
-      } else {
-        breakMin = clampInt(breakMin + dir, 1, 60, 5);
-        LS.set('breakMin', breakMin);
-        timer.configure({ breakMs: breakMin * 60000 });
-      }
-      renderConfig();
-      renderHUD(timer.getState());
+      if (btn.dataset.adj === 'focus') setFocusMin(focusMin + dir);
+      else setBreakMin(breakMin + dir);
     });
   });
+
+  // typed entry
+  function wireNum(el, apply) {
+    el.addEventListener('focus', function () { el.select(); });
+    el.addEventListener('change', function () { apply(el.value); });
+    el.addEventListener('keydown', function (e) { if (e.key === 'Enter') el.blur(); });
+  }
+  wireNum(elFocusVal, setFocusMin);
+  wireNum(elBreakVal, setBreakMin);
 
   elSceneBtn.addEventListener('click', function () {
     var mode = scene.toggleSceneMode();
